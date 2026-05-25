@@ -204,8 +204,8 @@ char* openFasta ( char* fileIn){
 
     FILE* file = fopen(fileIn, "r");
     if (file == NULL) {
-        fprintf(stderr,"Error opening file\n");
-        return 0;
+        fprintf(stderr,"Error opening file %s\n",fileIn);
+        EXIT_FAILURE;
     }
          // --- 1. Find file size ---
     fseek(file, 0, SEEK_END);
@@ -217,7 +217,7 @@ char* openFasta ( char* fileIn){
     if (!buffer) {
         perror("Memory allocation failed");
         fclose(file);
-        return 0;
+        EXIT_FAILURE;
     }
          // --- 3. Read entire file into memory ---
     size_t line_length;
@@ -335,11 +335,14 @@ int main (int argc, char **argv) {
         outfile2 = fnamesOut[1];
     }
     size_t outLen=0; 
-    if(OutPath != NULL && OutPath[outLen-1] != '/'){
+    if(OutPath != NULL ){ // && 
+        outLen=strlen(OutPath);
         OutPath=strdup(OutPath);
-        OutPath=realloc(OutPath,(outLen+4)*sizeof(char));
-        strncat(OutPath,"/",1);
-        outLen=strlen(OutPath);        
+        if(OutPath[outLen-1] != '/'){
+            OutPath=realloc(OutPath,(outLen+4)*sizeof(char));
+            strncat(OutPath,"/",1);
+            outLen=strlen(OutPath); 
+        }      
     }
     if (OutPath && (! dir_exists_and_writable(OutPath))) {
             mkdir(OutPath, 0777);
@@ -428,7 +431,7 @@ int main (int argc, char **argv) {
                     break;
                 }   
             }
-            size_t tailLen = rootlen - lastSlashIndex +1;
+            size_t tailLen = rootlen - lastSlashIndex - 1;
                  // derive 1 outfile name  
                  
             outfileR = calloc(outLen+rootlen + 22,sizeof(char));
@@ -453,7 +456,8 @@ int main (int argc, char **argv) {
 
     int deriveTitle = 0;
     if(title == NULL){deriveTitle=1;}
-
+    int findReadLimit = 0;
+    if(readlimit==0){findReadLimit=1;}
 
   // cycle through input files
   for ( int fi = 0; fi<InputCount; fi+=1){ // start of batch cycle
@@ -465,7 +469,7 @@ int main (int argc, char **argv) {
     if(fileType != 0){continue;}         // files not in fasta format will be skipped
 
   
-    if(readlimit == 0){ // get the inputfile linecount via wc -l    
+    if(findReadLimit){ // get the inputfile linecount via wc -l    
         fileStat(fname1);
         readlimit = (uint32_t)filestatRes[2];
     }
@@ -488,7 +492,7 @@ int main (int argc, char **argv) {
             size_t lLen = strlen(line);
             //fprintf(stderr,"lLen: %zu\n",lLen);
             if(lLen < 2){line = p + 1;continue; }
-            if (line[0] == '>') {
+            if (line[0] == '>') {                
                 m+=1; 
                 if(m == readlimit){break;}
                 TITLE[m]=line;
@@ -532,8 +536,9 @@ int main (int argc, char **argv) {
         // pick random sequence
         int s = 0;
         if( m > 0){
-            s = rand() % m;
+            s = rand() % (m+1);
         }
+        if(!seqs[s]){r--; continue;}
         if(lengths[s] <= 3* readLength ){r--; continue;}
         int start = rand() % (lengths[s] - readLength );
         if(paired ){ start = readLength + (rand() % (lengths[s] - 3*readLength )); }
@@ -557,8 +562,16 @@ int main (int argc, char **argv) {
         }
         int start2 = 0;
         if(paired){ 
-            if(rev==0){ start2 = start+ 50 +  (rand() % (300)); if(start > lengths[s]-readLength-1){start2=lengths[s]-readLength-1;}}
-            else {start2 = start - 50 - (rand() % (300));if(start2 < 0){start2=0;}}
+            if(rev==0){ start2 = start+ 50 +  (rand() % (300)); 
+                if(start2 > lengths[s]-readLength-1){
+                    start2=lengths[s]-readLength-1;
+                }
+            }
+            else {start2 = start - 50 - (rand() % (300));
+                if(start2 < 0){
+                    start2=0;
+                }
+            }
             memcpy(read2, seqs[s] + start2, readLength); 
             if(p){
                 for(int i = 0; i < readLength; i++) {
@@ -583,20 +596,23 @@ int main (int argc, char **argv) {
             for(int i = 0; i < readLength; i++) {fputc('I', fileout2);}
             fputc('\n', fileout2);
         }
-        // free(read);read = NULL;
+        //free(read);read = NULL;
+        //free(read2);read2 = NULL;
 
     }
     fclose(fileoutR);
     fclose(fileout2);
-    fprintf(stderr,"Outfile: %s \n",outfileR);
-    if(paired){fprintf(stderr,"Outfile2: %s \n",outfile2); }
     free(FastaBuffer);FastaBuffer=NULL;
     free(read);read = NULL;
     free(TITLE);TITLE=NULL;
     free(seqs);seqs=NULL;
     free(lengths);lengths=NULL;
-    //free(title);title=NULL;
+    if(deriveTitle){free(title);title=NULL;}
+    if(findReadLimit){readlimit=0;}
   }
+    fprintf(stderr,"Outfile: %s \n",outfileR);
+    if(paired){fprintf(stderr,"Outfile2: %s \n",outfile2); }
+   
     return 0;
 
 }
