@@ -367,16 +367,16 @@ int main (int argc, char **argv) {
                 size_t rootlen=fq-fnamesOut[0];
                 strncpy(outfileR,fnamesOut[0],rootlen);
                 strncpy(outfile2,fnamesOut[0],rootlen);
-                strncat(outfileR,"R1",2);
-                strncat(outfile2,"R2",2);
+                strncat(outfileR,".R1",3);
+                strncat(outfile2,".R2",3);
                 strncat(outfileR,".fastq",6);
                 strncat(outfile2,".fastq",6);
             }
             else{
                 strncpy(outfileR,fnamesOut[0],o2Len);
                 strncpy(outfile2,fnamesOut[0],o2Len);
-                strncat(outfileR,"R1",2);
-                strncat(outfile2,"R2",2);
+                strncat(outfileR,".R1",3);
+                strncat(outfile2,".R2",3);
                 strncat(outfileR,".fastq",6);
                 strncat(outfile2,".fastq",6);
             }
